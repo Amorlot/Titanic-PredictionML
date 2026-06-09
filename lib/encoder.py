@@ -46,6 +46,9 @@ class GenericEncoder:
             return self._target_le.fit_transform(y)
         return self._target_le.transform(y)
 
+    def decode_target(self, y):
+        return self._target_le.inverse_transform(y)
+
     # ── internals ────────────────────────────────────────────────────────────
 
     def _fit_transform_parts(self, df: pd.DataFrame) -> list:

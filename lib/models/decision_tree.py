@@ -23,4 +23,5 @@ class GenericDecisionTree(AbstractModel):
         grid.fit(X_train, y_train)
         self.model = grid.best_estimator_
         self.best_params = grid.best_params_
+        self.best_score = grid.best_score_
         return self.model

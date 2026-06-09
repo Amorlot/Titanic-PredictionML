@@ -4,14 +4,45 @@ loader:
   target_col: Survived
   drop_cols:
     - PassengerId
-    - Name
     - Ticket
     - Cabin
   drop_missing_thresh: 0.6
 
+feature_engineering:
+  enabled: true
+  drop_raw_fare_for:    # rimuove Fare grezzo (rimane FarePerPerson) per modelli lineari
+    - logreg
+    - svm
+
 cleaner:
-  num_strategy: median
-  cat_strategy: most_frequent
+  num_strategy: knn       # median | mean | most_frequent | knn
+  cat_strategy: knn       # unknown | most_frequent | knn
+  knn_neighbors: 5
+
+outliers:
+  detection:              # iqr | zscore | [iqr, zscore]
+    - iqr
+    - zscore
+  treatment: winsorization
+  iqr_threshold: 1.5
+  zscore_threshold: 3.0
+  cols:                   # lista colonne specifiche, vuoto = tutti i numerici
+    - Fare
+    - Age
+  apply_to:               # modelli che ricevono dati winsorizzati
+    - logreg
+
+multicollinearity:
+  threshold: 0.85       # soglia |r| oltre cui due feature sono considerate collineari
+  drop: true            # true = droppa automaticamente, false = solo report
+  apply_to:
+    - logreg
+
+pca:
+  n_components: 0.95    # float = varianza spiegata, int = n componenti fisso
+  apply_to:
+    - logreg
+    - svm
 
 encoder:
   num_strategy: standard
@@ -22,9 +53,14 @@ models:
     - logreg
     - xgboost
     - decision_tree
+    - random_forest
     - svm
   cv: 5
   scoring: f1_weighted
 
+model_cache:
+  enabled: true
+  path: models/
+
 output:
-  submission_path: data/submission.csv
+  submission_dir: data/submissions/

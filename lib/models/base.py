@@ -11,6 +11,7 @@ class AbstractModel(ABC):
     def __init__(self):
         self.model = None
         self.best_params = None
+        self.best_score = None
 
     @abstractmethod
     def train(self, X_train, y_train, **kwargs):

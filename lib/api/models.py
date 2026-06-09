@@ -3,16 +3,18 @@ import pandas as pd
 
 from lib.models.logreg import GenericLogreg
 from lib.models.xgboost import GenericXGBoost
-from src.model_decision_tree import DecisionTreeModel
-from src.model_svm import SVMModel
+from lib.models.decision_tree import GenericDecisionTree
+from lib.models.random_forest import GenericRandomForest
+from lib.models.svm import GenericSVM
 
 models_bp = Blueprint('models', __name__, url_prefix='/models')
 
 _AVAILABLE = {
     'logreg':        GenericLogreg,
     'xgboost':       GenericXGBoost,
-    'decision_tree': DecisionTreeModel,
-    'svm':           SVMModel,
+    'decision_tree': GenericDecisionTree,
+    'random_forest': GenericRandomForest,
+    'svm':           GenericSVM,
 }
 
 _trained: dict = {}
@@ -57,6 +59,7 @@ def train():
     return jsonify({
         'model':       model_name,
         'best_params': model.best_params,
+        'best_score':  round(model.best_score, 4),
         'status':      'addestrato',
     }), 200
 
