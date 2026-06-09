@@ -1,3 +1,4 @@
+import yaml
 import pandas as pd
 from lib.loader import GenericLoader
 from lib.cleaner import GenericCleaner
@@ -10,6 +11,13 @@ from lib.models.svm import GenericSVM
 
 SEP = "=" * 65
 
+_MODEL_REGISTRY = {
+    'logreg':        GenericLogreg,
+    'xgboost':       GenericXGBoost,
+    'decision_tree': GenericDecisionTree,
+    'svm':           GenericSVM,
+}
+
 
 def section(title):
     print(f"\n{SEP}")
@@ -17,14 +25,21 @@ def section(title):
     print(SEP)
 
 
+def load_config(path: str = 'config.yaml') -> dict:
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
 def main():
+    cfg = load_config()
+
     # ── CARICAMENTO TRAIN ────────────────────────────────────────
     section("CARICAMENTO TRAIN")
     loader = GenericLoader(
-        target_col='Survived',
-        csv_path='data/train.csv',
-        drop_cols=['PassengerId', 'Name', 'Ticket', 'Cabin'],
-        drop_missing_thresh=0.6,
+        target_col=cfg['loader']['target_col'],
+        csv_path=cfg['loader']['train_path'],
+        drop_cols=cfg['loader'].get('drop_cols', []),
+        drop_missing_thresh=cfg['loader'].get('drop_missing_thresh'),
     )
     loader.load()
     info = loader.info()
@@ -43,51 +58,61 @@ def main():
     section("EDA")
     eda = GenericEda(loader.df)
 
-    bal = eda.class_balance(loader.df['Survived'])
+    bal = eda.class_balance(loader.df[cfg['loader']['target_col']])
     print("  Bilanciamento target:")
     for cls, v in bal.items():
         print(f"    {cls}: {v['count']} ({v['pct']}%)")
 
     corr = eda.correlation()
     if corr:
+        target = cfg['loader']['target_col']
         survived_corr = sorted(
-            ((k, v) for k, v in corr.get('Survived', {}).items() if k != 'Survived'),
+            ((k, v) for k, v in corr.get(target, {}).items() if k != target),
             key=lambda x: abs(x[1] or 0), reverse=True
         )
-        print("\n  Correlazione con Survived:")
+        print(f"\n  Correlazione con {target}:")
         for feat, val in survived_corr:
             print(f"    {feat:<15} {val:.4f}")
 
     # ── PULIZIA ──────────────────────────────────────────────────
     section("PULIZIA DATI")
-    X = loader.df.drop(columns=['Survived'])
-    y = loader.df['Survived']
+    X = loader.df.drop(columns=[cfg['loader']['target_col']])
+    y = loader.df[cfg['loader']['target_col']]
 
     cleaner = GenericCleaner()
-    cleaner.configure(num_strategy='median', cat_strategy='most_frequent')
+    cleaner.configure(
+        num_strategy=cfg['cleaner']['num_strategy'],
+        cat_strategy=cfg['cleaner']['cat_strategy'],
+    )
     X = cleaner.fit_transform(X)
     print(f"  Shape dopo pulizia: {X.shape}")
 
     # ── ENCODING ─────────────────────────────────────────────────
     section("ENCODING")
     encoder = GenericEncoder()
-    encoder.configure(num_strategy='standard', cat_strategy='ohe')
+    encoder.configure(
+        num_strategy=cfg['encoder']['num_strategy'],
+        cat_strategy=cfg['encoder']['cat_strategy'],
+    )
     X_enc = encoder.fit_transform_features(X)
     y_enc = encoder.encode_target(y, fit=True)
     print(f"  Shape dopo encoding: {X_enc.shape}")
 
-    # ── TRAINING (GridSearchCV con CV interna) ───────────────────
-    models = {
-        "LogisticRegression": GenericLogreg(),
-        "XGBoost":            GenericXGBoost(),
-        "DecisionTree":       GenericDecisionTree(),
-        "SVM":                GenericSVM(),
-    }
+    # ── TRAINING ─────────────────────────────────────────────────
+    active = cfg['models']['active']
+    cv      = cfg['models'].get('cv', 5)
+    scoring = cfg['models'].get('scoring', 'f1_weighted')
+
+    unknown = [m for m in active if m not in _MODEL_REGISTRY]
+    if unknown:
+        raise ValueError(f"Modelli non riconosciuti in config.yaml: {unknown}")
+
+    models = {name: _MODEL_REGISTRY[name]() for name in active}
 
     results = {}
     for name, model in models.items():
         section(f"TRAINING  {name}")
-        model.train(X_enc, y_enc)
+        model.train(X_enc, y_enc, cv=cv, scoring=scoring)
         print(f"  Migliori params: {model.best_params}")
         metrics = model.evaluate(X_enc, y_enc)
         results[name] = {'model': model, 'metrics': metrics}
@@ -108,20 +133,21 @@ def main():
 
     # ── PREDIZIONE SU TEST ───────────────────────────────────────
     section("PREDIZIONE SU TEST")
-    test_raw = pd.read_csv('data/test.csv')
+    test_raw = pd.read_csv(cfg['loader']['test_path'])
     passenger_ids = test_raw['PassengerId']
 
-    test_df = test_raw.drop(columns=['PassengerId', 'Name', 'Ticket', 'Cabin'], errors='ignore')
+    drop = [c for c in cfg['loader'].get('drop_cols', []) if c != 'PassengerId']
+    test_df = test_raw.drop(columns=['PassengerId'] + drop, errors='ignore')
     test_df = cleaner.transform(test_df)
     test_enc = encoder.transform_features(test_df)
 
     best_model = best_r['model']
-    preds = best_model.predict(test_enc)
-    preds_decoded = encoder._target_le.inverse_transform(preds)
+    preds = encoder._target_le.inverse_transform(best_model.predict(test_enc))
 
-    submission = pd.DataFrame({'PassengerId': passenger_ids, 'Survived': preds_decoded})
-    submission.to_csv('data/submission.csv', index=False)
-    print(f"  submission.csv salvato ({len(submission)} righe) con {best_name}")
+    submission = pd.DataFrame({'PassengerId': passenger_ids, 'Survived': preds})
+    submission_path = cfg['output']['submission_path']
+    submission.to_csv(submission_path, index=False)
+    print(f"  {submission_path} salvato ({len(submission)} righe) con {best_name}")
     print(f"\n{SEP}\n  FINE\n{SEP}\n")
 
 

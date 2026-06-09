@@ -1,0 +1,30 @@
+loader:
+  train_path: data/train.csv
+  test_path: data/test.csv
+  target_col: Survived
+  drop_cols:
+    - PassengerId
+    - Name
+    - Ticket
+    - Cabin
+  drop_missing_thresh: 0.6
+
+cleaner:
+  num_strategy: median
+  cat_strategy: most_frequent
+
+encoder:
+  num_strategy: standard
+  cat_strategy: ohe
+
+models:
+  active:
+    - logreg
+    - xgboost
+    - decision_tree
+    - svm
+  cv: 5
+  scoring: f1_weighted
+
+output:
+  submission_path: data/submission.csv
