@@ -42,7 +42,6 @@ pca:
   n_components: 0.95    # float = varianza spiegata, int = n componenti fisso
   apply_to:
     - logreg
-    - svm
 
 encoder:
   num_strategy: standard
@@ -57,9 +56,11 @@ models:
     - svm
   cv: 5
   scoring: f1_weighted
+  tune_threshold: false     # cerca la soglia ottimale dopo il training
+  threshold_scoring: f1     # f1 | f1_weighted | accuracy | recall | precision
 
 model_cache:
-  enabled: true
+  enabled: false
   path: models/
 
 output:

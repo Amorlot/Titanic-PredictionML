@@ -9,16 +9,12 @@ _DEFAULT_PARAM_GRID = {
     'min_samples_leaf':  [1, 2, 4],
 }
 
-
 class GenericDecisionTree(AbstractModel):
-
-    def train(self, X_train, y_train, cv: int = 5, scoring: str = 'f1_weighted', param_grid: dict = None):
+    def train(self, X_train, y_train, cv=5, scoring='f1_weighted', param_grid=None):
         grid = GridSearchCV(
             estimator=DecisionTreeClassifier(random_state=42),
             param_grid=param_grid or _DEFAULT_PARAM_GRID,
-            cv=cv,
-            scoring=scoring,
-            n_jobs=-1,
+            cv=cv, scoring=scoring, n_jobs=-1,
         )
         grid.fit(X_train, y_train)
         self.model = grid.best_estimator_

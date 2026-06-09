@@ -3,31 +3,20 @@ from sklearn.model_selection import GridSearchCV
 from models.base import AbstractModel
 
 _DEFAULT_PARAM_GRID = {
-    'n_estimators':     [100, 200, 500],
-    'max_depth':        [3, 5, 7],
-    'learning_rate':    [0.01, 0.1, 0.3],
+    'n_estimators':     [100, 200],
+    'max_depth':        [3, 5],
+    'learning_rate':    [0.05, 0.1],
     'subsample':        [0.8, 1.0],
-    'min_child_weight': [1, 5],
+    'min_child_weight': [1, 3],
 }
 
-
 class GenericXGBoost(AbstractModel):
-
-    def train(
-        self,
-        X_train,
-        y_train,
-        cv: int = 5,
-        scoring: str = 'f1_weighted',
-        param_grid: dict = None,
-    ):
+    def train(self, X_train, y_train, cv=5, scoring='f1_weighted', param_grid=None):
         grid = GridSearchCV(
-            estimator=XGBClassifier(random_state=42, eval_metric='logloss'),
+            estimator=XGBClassifier(random_state=42, eval_metric='logloss',
+                                    nthread=1, verbosity=0),
             param_grid=param_grid or _DEFAULT_PARAM_GRID,
-            cv=cv,
-            scoring=scoring,
-            n_jobs=-1,
-            verbose=0,
+            cv=cv, scoring=scoring, n_jobs=-1,
         )
         grid.fit(X_train, y_train)
         self.model = grid.best_estimator_

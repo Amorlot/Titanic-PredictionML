@@ -8,16 +8,12 @@ _DEFAULT_PARAM_GRID = [
     {'kernel': ['poly'],   'C': [0.1, 1, 10],       'degree': [2, 3]},
 ]
 
-
 class GenericSVM(AbstractModel):
-
-    def train(self, X_train, y_train, cv: int = 5, scoring: str = 'f1_weighted', param_grid=None):
+    def train(self, X_train, y_train, cv=5, scoring='f1_weighted', param_grid=None):
         grid = GridSearchCV(
-            estimator=SVC(random_state=42),
+            estimator=SVC(random_state=42, probability=True),
             param_grid=param_grid or _DEFAULT_PARAM_GRID,
-            cv=cv,
-            scoring=scoring,
-            n_jobs=-1,
+            cv=cv, scoring=scoring, n_jobs=-1,
         )
         grid.fit(X_train, y_train)
         self.model = grid.best_estimator_

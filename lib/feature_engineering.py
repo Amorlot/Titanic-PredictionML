@@ -40,12 +40,23 @@ class FeatureEngineer:
     def __init__(self):
         self._fare_quantiles = {}
         self._drop_raw_fare_for = []
+        self._age_medians = {}      # mediana età per TitleGroup (calcolata sul train)
+        self._age_fallback = None   # mediana globale come fallback
 
     def configure(self, drop_raw_fare_for: list = None) -> "FeatureEngineer":
         self._drop_raw_fare_for = drop_raw_fare_for or []
         return self
 
     def fit(self, df: pd.DataFrame) -> "FeatureEngineer":
+        # Mediana età per TitleGroup — usata per imputare Age prima del cleaner
+        if 'Name' in df.columns and 'Age' in df.columns:
+            titles = df['Name'].str.extract(r',\s*([^\.]+)\.')[0].str.strip()
+            title_groups = titles.map(_TITLE_MAP).fillna('Rare')
+            temp_age = df.assign(TitleGroup=title_groups)
+            self._age_medians  = temp_age.groupby('TitleGroup')['Age'].median().to_dict()
+            self._age_fallback = df['Age'].median()
+
+        # Quantili FarePerPerson per SocialClass
         fare_pp = df['Fare'] / (df['SibSp'] + df['Parch'] + 1)
         temp = df.assign(FarePerPerson=fare_pp)
         for pclass, group in temp.groupby('Pclass'):
@@ -64,6 +75,15 @@ class FeatureEngineer:
             titles = df['Name'].str.extract(r',\s*([^\.]+)\.')[0].str.strip()
             df['TitleGroup'] = titles.map(_TITLE_MAP).fillna('Rare')
             df.drop(columns=['Name'], inplace=True)
+
+        # ── Imputazione Age per TitleGroup ───────────────────────
+        # Master ~5, Miss ~22, Mrs ~36, Mr ~30 — molto più precisa della mediana globale
+        if 'Age' in df.columns and df['Age'].isnull().any() and self._age_medians:
+            df['Age'] = df.apply(
+                lambda r: self._age_medians.get(r['TitleGroup'], self._age_fallback)
+                          if pd.isna(r['Age']) else r['Age'],
+                axis=1,
+            )
 
         # ── FarePerPerson ────────────────────────────────────────
         df['FarePerPerson'] = df['Fare'] / (df['SibSp'] + df['Parch'] + 1)
@@ -109,6 +129,8 @@ class FeatureEngineer:
         result = {}
         if 'TitleGroup' in df.columns:
             result['TitleGroup'] = df['TitleGroup'].value_counts().to_dict()
+        if self._age_medians:
+            result['AgeImputationByTitle'] = {k: round(v, 1) for k, v in self._age_medians.items()}
         if 'AgeGroup' in df.columns:
             result['AgeGroup'] = df['AgeGroup'].value_counts().to_dict()
         if 'SocialClass' in df.columns:

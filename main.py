@@ -79,9 +79,11 @@ def main():
     cache_dir     = cache_cfg.get('path', 'models/')
     cfg_hash      = _config_hash(cfg)
 
-    active  = cfg['models']['active']
-    cv      = cfg['models'].get('cv', 5)
-    scoring = cfg['models'].get('scoring', 'f1_weighted')
+    active            = cfg['models']['active']
+    cv                = cfg['models'].get('cv', 5)
+    scoring           = cfg['models'].get('scoring', 'f1_weighted')
+    tune_threshold    = cfg['models'].get('tune_threshold', False)
+    threshold_scoring = cfg['models'].get('threshold_scoring', 'f1')
 
     unknown = [m for m in active if m not in _MODEL_REGISTRY]
     if unknown:
@@ -123,6 +125,11 @@ def main():
         print("  TitleGroup:")
         for title, cnt in fe_report.get('TitleGroup', {}).items():
             print(f"    {title:<10} {cnt}")
+        age_imp = fe_report.get('AgeImputationByTitle', {})
+        if age_imp:
+            print("  Imputazione Age per titolo:")
+            for title, med in sorted(age_imp.items()):
+                print(f"    {title:<10} mediana={med}")
         print("  AgeGroup:")
         for ag, cnt in fe_report.get('AgeGroup', {}).items():
             print(f"    {ag:<10} {cnt}")
@@ -297,6 +304,11 @@ def main():
         if not from_cache:
             print(f"  Migliori params: {model.best_params}")
         print(f"  CV best score ({scoring}): {model.best_score:.4f}")
+        if tune_threshold and not from_cache:
+            thr = model.tune_threshold(X_base, y_enc, cv=cv, scoring=threshold_scoring)
+            if thr:
+                print(f"  Soglia ottimale ({threshold_scoring}): {thr['best_threshold']}  "
+                      f"score={thr['best_score']:.4f}  (default=0.5)")
         results[name] = {
             'model': model, 'cv_score': model.best_score,
             'dataset': base_label,
@@ -323,6 +335,11 @@ def main():
             if not from_cache_pca:
                 print(f"  Migliori params: {model_pca.best_params}")
             print(f"  CV best score ({scoring}): {model_pca.best_score:.4f}")
+            if tune_threshold and not from_cache_pca:
+                thr = model_pca.tune_threshold(X_pca, y_enc, cv=cv, scoring=threshold_scoring)
+                if thr:
+                    print(f"  Soglia ottimale ({threshold_scoring}): {thr['best_threshold']}  "
+                          f"score={thr['best_score']:.4f}  (default=0.5)")
             results[pca_name] = {
                 'model': model_pca, 'cv_score': model_pca.best_score,
                 'dataset': pca_label,
