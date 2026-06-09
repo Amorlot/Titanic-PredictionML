@@ -3,9 +3,8 @@ from sklearn.model_selection import GridSearchCV
 from models.base import AbstractModel
 
 _DEFAULT_PARAM_GRID = [
-    {'kernel': ['rbf'],    'C': [0.1, 1, 10, 100], 'gamma': ['scale', 'auto', 0.01, 0.1]},
-    {'kernel': ['linear'], 'C': [0.1, 1, 10, 100]},
-    {'kernel': ['poly'],   'C': [0.1, 1, 10],       'degree': [2, 3]},
+    {'kernel': ['rbf'],    'C': [0.1, 1, 10], 'gamma': ['scale', 0.1]},
+    {'kernel': ['linear'], 'C': [0.1, 1, 10]},
 ]
 
 class GenericSVM(AbstractModel):

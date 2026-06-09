@@ -1,3 +1,4 @@
+import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from models.base import AbstractModel
@@ -16,7 +17,8 @@ class GenericRandomForest(AbstractModel):
             param_grid=param_grid or _DEFAULT_PARAM_GRID,
             cv=cv, scoring=scoring, n_jobs=-1,
         )
-        grid.fit(X_train, y_train)
+        with joblib.parallel_backend('threading'):
+            grid.fit(X_train, y_train)
         self.model = grid.best_estimator_
         self.best_params = grid.best_params_
         self.best_score = grid.best_score_

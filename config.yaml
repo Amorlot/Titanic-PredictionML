@@ -5,8 +5,7 @@ loader:
   drop_cols:
     - PassengerId
     - Ticket
-    - Cabin
-  drop_missing_thresh: 0.6
+  drop_missing_thresh: 0.8
 
 feature_engineering:
   enabled: true
@@ -62,6 +61,21 @@ models:
 model_cache:
   enabled: false
   path: models/
+
+ensemble:
+  enabled: true
+  voting: soft          # soft | hard
+  # weights: auto       # auto = usa CV score di ogni membro come peso
+  weights:              # oppure pesi manuali (verranno normalizzati)
+    xgboost: 2
+    random_forest: 2
+    logreg: 1
+    svm: 1
+    decision_tree: 1
+  members:              # modelli da includere (devono essere in models.active)
+    - xgboost
+    - logreg
+    - svm
 
 output:
   submission_dir: data/submissions/

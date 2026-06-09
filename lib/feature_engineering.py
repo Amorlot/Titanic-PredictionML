@@ -85,8 +85,18 @@ class FeatureEngineer:
                 axis=1,
             )
 
+        # ── Cabin features (prima del drop) ──────────────────────
+        if 'Cabin' in df.columns:
+            df['CabinKnown'] = df['Cabin'].notna().astype(int)
+            df['CabinDeck']  = df['Cabin'].str[0].fillna('U')
+            df.drop(columns=['Cabin'], inplace=True)
+
+        # ── FamilySize / IsAlone ──────────────────────────────────
+        df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
+        df['IsAlone']    = (df['FamilySize'] == 1).astype(int)
+
         # ── FarePerPerson ────────────────────────────────────────
-        df['FarePerPerson'] = df['Fare'] / (df['SibSp'] + df['Parch'] + 1)
+        df['FarePerPerson'] = df['Fare'] / df['FamilySize']
 
         # ── AgeGroup ─────────────────────────────────────────────
         df['AgeGroup'] = pd.cut(
@@ -141,4 +151,12 @@ class FeatureEngineer:
                 'min':  round(float(df['FarePerPerson'].min()), 2),
                 'max':  round(float(df['FarePerPerson'].max()), 2),
             }
+        if 'FamilySize' in df.columns:
+            result['FamilySize'] = df['FamilySize'].value_counts().sort_index().to_dict()
+        if 'IsAlone' in df.columns:
+            result['IsAlone'] = df['IsAlone'].value_counts().to_dict()
+        if 'CabinKnown' in df.columns:
+            result['CabinKnown'] = df['CabinKnown'].value_counts().to_dict()
+        if 'CabinDeck' in df.columns:
+            result['CabinDeck'] = df['CabinDeck'].value_counts().sort_index().to_dict()
         return result

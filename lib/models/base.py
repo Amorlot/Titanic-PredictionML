@@ -97,3 +97,12 @@ class AbstractModel(ABC):
         if self.model is None:
             raise ValueError("Eseguire prima train().")
         return skl_report(y_test, self.predict(X_test), zero_division=0)
+
+    def oof_report(self, X_train, y_train, cv: int = 5) -> str:
+        """Classification report su predizioni out-of-fold (onesto, non sul train set)."""
+        if self.model is None:
+            raise ValueError("Eseguire prima train().")
+        import joblib
+        with joblib.parallel_backend('threading'):
+            oof_preds = cross_val_predict(self.model, X_train, y_train, cv=cv, n_jobs=-1)
+        return skl_report(y_train, oof_preds, zero_division=0)
