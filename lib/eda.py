@@ -2,12 +2,19 @@ import pandas as pd
 import numpy as np
 
 
-class Eda:
+class GenericEda:
+    """
+    Analisi esplorativa generica per dataset misti (numerici + categoriali).
+    Tutti i metodi restituiscono dizionari JSON-serializzabili.
+    """
+
     def __init__(self, df: pd.DataFrame):
         self.df = df
 
     def summary(self) -> dict:
+        """Statistiche descrittive per colonne numeriche e categoriali."""
         result = {}
+
         num_df = self.df.select_dtypes(include='number')
         if not num_df.empty:
             desc = num_df.describe().round(4)
@@ -15,15 +22,21 @@ class Eda:
                 col: {k: (None if np.isnan(v) else v) for k, v in desc[col].items()}
                 for col in desc.columns
             }
+
         cat_df = self.df.select_dtypes(exclude='number')
         if not cat_df.empty:
             result['categorical'] = {
-                col: {'unique': int(cat_df[col].nunique()), 'top_5': cat_df[col].value_counts().head(5).to_dict()}
+                col: {
+                    'unique': int(cat_df[col].nunique()),
+                    'top_5': cat_df[col].value_counts().head(5).to_dict(),
+                }
                 for col in cat_df.columns
             }
+
         return result
 
     def missing_report(self) -> dict:
+        """Valori mancanti per colonna."""
         total = len(self.df)
         missing = self.df.isnull().sum()
         missing = missing[missing > 0]
@@ -33,6 +46,7 @@ class Eda:
         }
 
     def correlation(self) -> dict:
+        """Matrice di correlazione (solo colonne numeriche)."""
         num_df = self.df.select_dtypes(include='number')
         if num_df.shape[1] < 2:
             return {}
@@ -43,6 +57,7 @@ class Eda:
         }
 
     def class_balance(self, y) -> dict:
+        """Distribuzione del target."""
         counts = pd.Series(y).value_counts()
         total = len(y)
         return {

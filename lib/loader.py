@@ -1,19 +1,45 @@
 import numpy as np
 import pandas as pd
+from ucimlrepo import fetch_ucirepo
 
 _MISSING_MARKERS = r'^\s*(\?|nan|NaN|N/A|NA|none|None|--)\s*$'
 
 
-class DataLoader:
-    def __init__(self, csv_path: str, target_col: str, drop_cols: list = None, drop_missing_thresh: float = None):
-        self.csv_path = csv_path
+class GenericLoader:
+    """
+    Carica un dataset da UCI (per id) o da file CSV.
+    Supporta qualsiasi combinazione di feature numeriche e categoriali.
+    """
+
+    def __init__(
+        self,
+        target_col: str,
+        dataset_id: int = None,
+        csv_path: str = None,
+        drop_cols: list = None,
+        drop_missing_thresh: float = None,
+    ):
+        if dataset_id is None and csv_path is None:
+            raise ValueError("Specificare dataset_id oppure csv_path.")
+
         self.target_col = target_col
+        self.dataset_id = dataset_id
+        self.csv_path = csv_path
         self.drop_cols = drop_cols or []
         self.drop_missing_thresh = drop_missing_thresh
+
         self.df = None
 
     def load(self) -> pd.DataFrame:
-        self.df = pd.read_csv(self.csv_path)
+        if self.dataset_id is not None:
+            dataset = fetch_ucirepo(id=self.dataset_id)
+            self.df = pd.concat([
+                dataset.data.features.copy(),
+                dataset.data.targets.copy(),
+            ], axis=1)
+        else:
+            self.df = pd.read_csv(self.csv_path)
+
         self.df.replace(to_replace=_MISSING_MARKERS, value=np.nan, regex=True, inplace=True)
 
         if self.drop_cols:
@@ -48,6 +74,6 @@ class DataLoader:
         missing = self.df.isnull().sum()
         missing = missing[missing > 0]
         return {
-            col: {"count": int(cnt), "pct": round(cnt / total * 100, 2)}
-            for col, cnt in missing.items()
+            col: {"count": int(count), "pct": round(count / total * 100, 2)}
+            for col, count in missing.items()
         }

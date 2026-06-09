@@ -1,23 +1,24 @@
-from xgboost import XGBClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
-from src.model_base import AbstractModel
+from models.base import AbstractModel
 
 _DEFAULT_PARAM_GRID = {
-    'n_estimators':     [100, 200, 500],
-    'max_depth':        [3, 5, 7],
-    'learning_rate':    [0.01, 0.1, 0.3],
-    'subsample':        [0.8, 1.0],
-    'min_child_weight': [1, 5],
+    'n_estimators':      [100, 200, 500],
+    'max_depth':         [None, 5, 10],
+    'min_samples_split': [2, 5, 10],
+    'max_features':      ['sqrt', 'log2'],
 }
 
 
-class ModelXGBoost(AbstractModel):
+class GenericRandomForest(AbstractModel):
 
     def train(self, X_train, y_train, cv: int = 5, scoring: str = 'f1_weighted', param_grid: dict = None):
         grid = GridSearchCV(
-            estimator=XGBClassifier(random_state=42, eval_metric='logloss'),
+            estimator=RandomForestClassifier(random_state=42),
             param_grid=param_grid or _DEFAULT_PARAM_GRID,
-            cv=cv, scoring=scoring, n_jobs=-1, verbose=0,
+            cv=cv,
+            scoring=scoring,
+            n_jobs=-1,
         )
         grid.fit(X_train, y_train)
         self.model = grid.best_estimator_

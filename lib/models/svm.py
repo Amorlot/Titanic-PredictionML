@@ -9,7 +9,7 @@ _DEFAULT_PARAM_GRID = [
 ]
 
 
-class SVMModel(AbstractModel):
+class GenericSVM(AbstractModel):
 
     def train(self, X_train, y_train, cv: int = 5, scoring: str = 'f1_weighted', param_grid=None):
         grid = GridSearchCV(

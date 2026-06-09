@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
-    f1_score, classification_report as skl_report,
+    f1_score, classification_report as skl_report
 )
 import numpy as np
 
@@ -14,7 +14,7 @@ class AbstractModel(ABC):
 
     @abstractmethod
     def train(self, X_train, y_train, **kwargs):
-        pass
+        """Addestra il modello. Deve impostare self.model e self.best_params."""
 
     def predict(self, X):
         if self.model is None:

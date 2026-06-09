@@ -10,7 +10,7 @@ _DEFAULT_PARAM_GRID = {
 }
 
 
-class DecisionTreeModel(AbstractModel):
+class GenericDecisionTree(AbstractModel):
 
     def train(self, X_train, y_train, cv: int = 5, scoring: str = 'f1_weighted', param_grid: dict = None):
         grid = GridSearchCV(

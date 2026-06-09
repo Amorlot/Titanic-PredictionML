@@ -1,8 +1,12 @@
-from src import (
-    DataLoader, DataCleaner, Encoder, Eda, Split,
-    Logreg, ModelXGBoost,
-    DecisionTreeModel, SVMModel,
-)
+from lib.loader import GenericLoader
+from lib.cleaner import GenericCleaner
+from lib.encoder import GenericEncoder
+from lib.eda import GenericEda
+from lib.splitter import GenericSplitter
+from lib.models.logreg import GenericLogreg
+from lib.models.xgboost import GenericXGBoost
+from src.model_decision_tree import DecisionTreeModel
+from src.model_svm import SVMModel
 
 SEP = "=" * 65
 
@@ -16,9 +20,9 @@ def section(title):
 def main():
     # ── CARICAMENTO ──────────────────────────────────────────────
     section("CARICAMENTO DATASET")
-    loader = DataLoader(
-        csv_path='data/train.csv',
+    loader = GenericLoader(
         target_col='Survived',
+        csv_path='data/train.csv',
         drop_cols=['PassengerId', 'Name', 'Ticket', 'Cabin'],
         drop_missing_thresh=0.6,
     )
@@ -37,7 +41,7 @@ def main():
 
     # ── EDA ──────────────────────────────────────────────────────
     section("EDA")
-    eda = Eda(loader.df)
+    eda = GenericEda(loader.df)
 
     bal = eda.class_balance(loader.df['Survived'])
     print("  Bilanciamento target:")
@@ -58,13 +62,13 @@ def main():
     section("SPLIT (80/20 stratificato)")
     X = loader.df.drop(columns=['Survived'])
     y = loader.df['Survived']
-    splitter = Split(test_size=0.2, random_state=42, stratify=True)
+    splitter = GenericSplitter(test_size=0.2, random_state=42, stratify=True)
     X_train, X_test, y_train, y_test = splitter.split(X, y)
     print(f"  Train: {X_train.shape[0]} righe   Test: {X_test.shape[0]} righe")
 
     # ── PULIZIA ──────────────────────────────────────────────────
     section("PULIZIA DATI")
-    cleaner = DataCleaner()
+    cleaner = GenericCleaner()
     cleaner.configure(num_strategy='median', cat_strategy='most_frequent')
     X_train = cleaner.fit_transform(X_train)
     X_test  = cleaner.transform(X_test)
@@ -73,7 +77,7 @@ def main():
 
     # ── ENCODING ─────────────────────────────────────────────────
     section("ENCODING")
-    encoder = Encoder()
+    encoder = GenericEncoder()
     encoder.configure(num_strategy='standard', cat_strategy='ohe')
     X_train = encoder.fit_transform_features(X_train)
     X_test  = encoder.transform_features(X_test)
@@ -84,8 +88,8 @@ def main():
 
     # ── MODELLI ──────────────────────────────────────────────────
     models = {
-        "LogisticRegression": Logreg(),
-        "XGBoost":            ModelXGBoost(),
+        "LogisticRegression": GenericLogreg(),
+        "XGBoost":            GenericXGBoost(),
         "DecisionTree":       DecisionTreeModel(),
         "SVM":                SVMModel(),
     }
