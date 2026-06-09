@@ -160,7 +160,7 @@ multicollinearity:
 
 ### `pca`
 
-Riduzione dimensionalità applicata dopo l'encoding. Ogni modello in `apply_to` viene addestrato sia con che senza PCA; nel riepilogo finale viene tenuta la variante con CV score più alto.
+Riduzione dimensionalità applicata dopo l'encoding. Ogni modello in `apply_to` viene addestrato sia con che senza PCA; nel riepilogo finale viene tenuta la variante con CV score più elevato.
 
 ```yaml
 pca:
