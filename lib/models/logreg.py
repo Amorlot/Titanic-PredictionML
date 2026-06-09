@@ -1,6 +1,6 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
-from models.base import AbstractModel
+from lib.models.base import AbstractModel
 
 _DEFAULT_PARAM_GRID = [
     {'penalty': ['l1'], 'C': [0.001, 0.01, 0.1, 1, 10, 100], 'solver': ['liblinear']},

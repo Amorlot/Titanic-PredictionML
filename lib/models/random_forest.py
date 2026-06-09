@@ -1,7 +1,7 @@
 import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
-from models.base import AbstractModel
+from lib.models.base import AbstractModel
 
 _DEFAULT_PARAM_GRID = {
     'n_estimators':      [100, 200],

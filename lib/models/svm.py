@@ -1,6 +1,6 @@
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
-from models.base import AbstractModel
+from lib.models.base import AbstractModel
 
 _DEFAULT_PARAM_GRID = [
     {'kernel': ['rbf'],    'C': [0.1, 1, 10], 'gamma': ['scale', 0.1]},
