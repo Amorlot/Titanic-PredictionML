@@ -1,6 +1,6 @@
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import GridSearchCV
-from models.base import AbstractModel
+from src.model_base import AbstractModel
 
 _DEFAULT_PARAM_GRID = {
     'max_depth':         [None, 3, 5, 10, 20],
