@@ -56,14 +56,14 @@ def _cache_path(cache_dir: str, name: str, cfg_hash: str) -> str:
     return os.path.join(cache_dir, f"{name}_{cfg_hash}.pkl")
 
 
-def _load_or_train(name, model_cls, X, y, cv, scoring, cache_enabled, cache_dir, cfg_hash):
+def _load_or_train(name, model_cls, X, y, cv, scoring, random_state, cache_enabled, cache_dir, cfg_hash):
     path = _cache_path(cache_dir, name, cfg_hash)
     if cache_enabled and os.path.exists(path):
         model = joblib.load(path)
         print(f"  [cache] Caricato da {path}")
         return model, True
     model = model_cls()
-    model.train(X, y, cv=cv, scoring=scoring)
+    model.train(X, y, cv=cv, scoring=scoring, random_state=random_state)
     if cache_enabled:
         os.makedirs(cache_dir, exist_ok=True)
         joblib.dump(model, path)
@@ -86,6 +86,7 @@ def main():
     active            = cfg['models']['active']
     cv                = cfg['models'].get('cv', 5)
     scoring           = cfg['models'].get('scoring', 'f1_weighted')
+    random_state      = cfg['models'].get('random_state', 42)
     tune_threshold    = cfg['models'].get('tune_threshold', False)
     threshold_scoring = cfg['models'].get('threshold_scoring', 'f1')
 
@@ -271,7 +272,7 @@ def main():
         for pca_name in [m for m in active if m in pca_models]:
             X_base_for_pca, _, _ = base_dataset(pca_name)
             r = PCAReducer()
-            r.configure(n_components=pca_cfg.get('n_components', 0.95))
+            r.configure(n_components=pca_cfg.get('n_components', 0.95), random_state=random_state)
             r.fit(X_base_for_pca)
             pca_reducers[pca_name] = r
             rep = r.report()
@@ -291,7 +292,7 @@ def main():
         print(f"  Dataset: {base_label}")
         model, from_cache = _load_or_train(
             name, _MODEL_REGISTRY[name],
-            X_base, y_enc, cv, scoring,
+            X_base, y_enc, cv, scoring, random_state,
             cache_enabled, cache_dir, cfg_hash,
         )
         if not from_cache:
@@ -323,7 +324,7 @@ def main():
             print(f"  Dataset: {pca_label}")
             model_pca, from_cache_pca = _load_or_train(
                 pca_key, _MODEL_REGISTRY[name],
-                X_pca, y_enc, cv, scoring,
+                X_pca, y_enc, cv, scoring, random_state,
                 cache_enabled, cache_dir, cfg_hash,
             )
             if not from_cache_pca:

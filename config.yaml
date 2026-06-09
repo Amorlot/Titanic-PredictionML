@@ -55,6 +55,7 @@ models:
     - svm
   cv: 5
   scoring: f1_weighted
+  random_state: 888
   tune_threshold: false     # cerca la soglia ottimale dopo il training
   threshold_scoring: f1     # f1 | f1_weighted | accuracy | recall | precision
 

@@ -126,7 +126,7 @@ def build_pipeline(cfg, df_train):
         if name in cfg['models']['active']:
             X_b, _, _ = base_dataset(name)
             r = PCAReducer()
-            r.configure(n_components=pca_cfg.get('n_components', 0.95))
+            r.configure(n_components=pca_cfg.get('n_components', 0.95), random_state=random_state)
             r.fit(X_b)
             pca_reducers[name] = r
 
@@ -171,10 +171,11 @@ def evaluate_all(cfg, n_folds):
     # preprocessing su tutti i 891 campioni (come fa il notebook)
     pipe = build_pipeline(cfg, df.copy())
     y_enc = pipe['y_enc']
-    cv_strategy = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+    cv_strategy = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
 
-    grid_scoring = cfg['models'].get('scoring', 'f1_weighted')
-    grid_cv      = cfg['models'].get('cv', 5)
+    grid_scoring  = cfg['models'].get('scoring', 'f1_weighted')
+    grid_cv       = cfg['models'].get('cv', 5)
+    random_state  = cfg['models'].get('random_state', 42)
 
     results = {}
     for name in cfg['models']['active']:
@@ -182,7 +183,7 @@ def evaluate_all(cfg, n_folds):
 
         print(f"  TRAINING {name} ...", flush=True)
         model = _MODEL_REGISTRY[name]()
-        model.train(X_base, y_enc, cv=grid_cv, scoring=grid_scoring)
+        model.train(X_base, y_enc, cv=grid_cv, scoring=grid_scoring, random_state=random_state)
 
         scores = cross_val_score(
             model.model, X_base, y_enc,
@@ -200,7 +201,7 @@ def evaluate_all(cfg, n_folds):
             X_pca = pipe['pca_reducers'][name].transform(X_base)
             print(f"  TRAINING {name}+PCA ...", flush=True)
             model_pca = _MODEL_REGISTRY[name]()
-            model_pca.train(X_pca, y_enc, cv=grid_cv, scoring=grid_scoring)
+            model_pca.train(X_pca, y_enc, cv=grid_cv, scoring=grid_scoring, random_state=random_state)
 
             scores_pca = cross_val_score(
                 model_pca.model, X_pca, y_enc,
