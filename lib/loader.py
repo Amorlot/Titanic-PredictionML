@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from ucimlrepo import fetch_ucirepo
 
 _MISSING_MARKERS = r'^\s*(\?|nan|NaN|N/A|NA|none|None|--)\s*$'
 
@@ -32,6 +31,7 @@ class GenericLoader:
 
     def load(self) -> pd.DataFrame:
         if self.dataset_id is not None:
+            from ucimlrepo import fetch_ucirepo
             dataset = fetch_ucirepo(id=self.dataset_id)
             self.df = pd.concat([
                 dataset.data.features.copy(),

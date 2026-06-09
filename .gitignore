@@ -3,3 +3,4 @@ __pycache__/
 .idea/
 data/*.csv
 data/*.zip
+data/submission.csv
