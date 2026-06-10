@@ -12,9 +12,9 @@ from lib.pca_reducer import PCAReducer
 
 def make_dirty_df():
     return pd.DataFrame({
-        'Age':    [25.0, None, 35.0, 30.0, None],
-        'Fare':   [10.0, 20.0, None, 40.0, 50.0],
-        'Sex':    ['male', None, 'female', 'male', 'female'],
+        'Age':    [25.0, np.nan, 35.0, 30.0, np.nan],
+        'Fare':   [10.0, 20.0, np.nan, 40.0, 50.0],
+        'Sex':    ['male', np.nan, 'female', 'male', 'female'],
         'Pclass': [1, 2, 3, 1, 2],
     })
 
@@ -134,7 +134,19 @@ def test_multicollinearity_report_only():
 
 def make_pca_df():
     rng = np.random.default_rng(7)
-    return pd.DataFrame(rng.normal(size=(100, 8)), columns=[f'f{i}' for i in range(8)])
+    base = rng.normal(size=(100, 3))
+    noise = rng.normal(scale=0.05, size=(100, 8))
+    data = np.column_stack([
+        base[:, 0],
+        base[:, 1],
+        base[:, 2],
+        base[:, 0] + base[:, 1] + noise[:, 3],
+        base[:, 0] + base[:, 2] + noise[:, 4],
+        base[:, 1] + base[:, 2] + noise[:, 5],
+        base[:, 0] * 0.5 + base[:, 1] * 0.5 + noise[:, 6],
+        base[:, 1] * 0.5 + base[:, 2] * 0.5 + noise[:, 7],
+    ])
+    return pd.DataFrame(data, columns=[f'f{i}' for i in range(8)])
 
 
 def test_pca_reduces_dimensions():
