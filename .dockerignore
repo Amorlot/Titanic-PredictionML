@@ -1,0 +1,12 @@
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.git/
+.gitignore
+
+# Presentazione e file personali
+data/*.pdf
+results/*.pptx
+make_presentation.py
