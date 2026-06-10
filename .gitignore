@@ -18,3 +18,7 @@ data/submissions/
 # Archivi e lock file (LibreOffice/Excel)
 data/*.zip
 data/.~lock.*
+make_presentation.py
+
+# Presentazione personale
+results/*.pptx

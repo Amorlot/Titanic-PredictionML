@@ -1,6 +1,6 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
-from models.base import AbstractModel
+from lib.models.base import AbstractModel
 
 _DEFAULT_PARAM_GRID = [
     {'penalty': ['l1'], 'C': [0.001, 0.01, 0.1, 1, 10, 100], 'solver': ['liblinear']},
@@ -9,9 +9,9 @@ _DEFAULT_PARAM_GRID = [
 ]
 
 class GenericLogreg(AbstractModel):
-    def train(self, X_train, y_train, cv=5, scoring='f1_weighted', param_grid=None):
+    def train(self, X_train, y_train, cv=5, scoring='f1_weighted', random_state=42, param_grid=None):
         grid = GridSearchCV(
-            estimator=LogisticRegression(max_iter=5000, random_state=42),
+            estimator=LogisticRegression(max_iter=5000, random_state=random_state),
             param_grid=param_grid or _DEFAULT_PARAM_GRID,
             cv=cv, scoring=scoring, n_jobs=-1,
         )

@@ -12,14 +12,16 @@ class PCAReducer:
 
     def __init__(self):
         self._n_components = 0.95
+        self._random_state = 42
         self._pca = None
 
-    def configure(self, n_components=0.95) -> "PCAReducer":
+    def configure(self, n_components=0.95, random_state=42) -> "PCAReducer":
         self._n_components = n_components
+        self._random_state = random_state
         return self
 
     def fit(self, df: pd.DataFrame) -> "PCAReducer":
-        self._pca = PCA(n_components=self._n_components, random_state=42)
+        self._pca = PCA(n_components=self._n_components, random_state=self._random_state)
         self._pca.fit(df)
         return self
 

@@ -17,6 +17,7 @@ import argparse
 import yaml
 import pandas as pd
 import numpy as np
+from sklearn.base import clone
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 
 from lib.feature_engineering import FeatureEngineer
@@ -122,11 +123,12 @@ def build_pipeline(cfg, df_train):
             label += ' (no Fare)'
         return base, enc_used, label
 
+    _rs = cfg['models'].get('random_state', 42)
     for name in pca_models:
         if name in cfg['models']['active']:
             X_b, _, _ = base_dataset(name)
             r = PCAReducer()
-            r.configure(n_components=pca_cfg.get('n_components', 0.95))
+            r.configure(n_components=pca_cfg.get('n_components', 0.95), random_state=_rs)
             r.fit(X_b)
             pca_reducers[name] = r
 
@@ -168,21 +170,24 @@ def evaluate_all(cfg, n_folds):
     drop_cols = [c for c in cfg['loader'].get('drop_cols', []) if c != 'PassengerId']
     df = df.drop(columns=['PassengerId'] + drop_cols, errors='ignore')
 
+    grid_scoring  = cfg['models'].get('scoring', 'f1_weighted')
+    grid_cv       = cfg['models'].get('cv', 5)
+    random_state  = cfg['models'].get('random_state', 42)
+
     # preprocessing su tutti i 891 campioni (come fa il notebook)
     pipe = build_pipeline(cfg, df.copy())
     y_enc = pipe['y_enc']
-    cv_strategy = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
-
-    grid_scoring = cfg['models'].get('scoring', 'f1_weighted')
-    grid_cv      = cfg['models'].get('cv', 5)
+    cv_strategy = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
 
     results = {}
+    trained_models = {}
     for name in cfg['models']['active']:
         X_base, _, label = pipe['base_dataset_fn'](name)
 
         print(f"  TRAINING {name} ...", flush=True)
         model = _MODEL_REGISTRY[name]()
-        model.train(X_base, y_enc, cv=grid_cv, scoring=grid_scoring)
+        model.train(X_base, y_enc, cv=grid_cv, scoring=grid_scoring, random_state=random_state)
+        trained_models[name] = model
 
         scores = cross_val_score(
             model.model, X_base, y_enc,
@@ -200,7 +205,8 @@ def evaluate_all(cfg, n_folds):
             X_pca = pipe['pca_reducers'][name].transform(X_base)
             print(f"  TRAINING {name}+PCA ...", flush=True)
             model_pca = _MODEL_REGISTRY[name]()
-            model_pca.train(X_pca, y_enc, cv=grid_cv, scoring=grid_scoring)
+            model_pca.train(X_pca, y_enc, cv=grid_cv, scoring=grid_scoring, random_state=random_state)
+            trained_models[f'{name}_pca'] = model_pca
 
             scores_pca = cross_val_score(
                 model_pca.model, X_pca, y_enc,
@@ -212,7 +218,74 @@ def evaluate_all(cfg, n_folds):
                 print(f"    Fold {i}: {s:.4f}  {bar}", flush=True)
             print(f"    Media: {scores_pca.mean():.4f}  Std: {scores_pca.std():.4f}\n", flush=True)
 
-    return results
+    return results, trained_models, pipe, random_state
+
+
+def _get_model_X(pipe, name):
+    """Restituisce X per un modello, applicando PCA se necessario."""
+    X_base, _, label = pipe['base_dataset_fn'](name)
+    if name in pipe['pca_models']:
+        X_base = pipe['pca_reducers'][name].transform(X_base)
+        label += '+PCA'
+    return X_base, label
+
+
+def evaluate_ensemble(cfg, pipe, trained_models, n_folds, random_state):
+    ens_cfg = cfg.get('ensemble', {})
+    if not ens_cfg.get('enabled', False):
+        return None
+
+    members_names = [m for m in ens_cfg.get('members', []) if m in trained_models]
+    if len(members_names) < 2:
+        print("  [WARN] Ensemble: meno di 2 membri disponibili — saltato\n")
+        return None
+
+    weights_cfg = ens_cfg.get('weights', 'auto')
+    voting      = ens_cfg.get('voting', 'soft')
+
+    if weights_cfg == 'auto' or weights_cfg is None:
+        weights = {m: trained_models[m].best_score for m in members_names}
+    elif isinstance(weights_cfg, dict):
+        weights = {m: float(weights_cfg.get(m, 1.0)) for m in members_names}
+    else:
+        weights = {m: 1.0 for m in members_names}
+
+    total_w  = sum(weights[m] for m in members_names)
+    y_enc    = pipe['y_enc']
+    cv_strat = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
+    X_ref, _ = _get_model_X(pipe, members_names[0])
+
+    print(f"  ENSEMBLE ({voting}) — membri: {members_names} ...", flush=True)
+    fold_scores = []
+    for fold_idx, (train_idx, test_idx) in enumerate(cv_strat.split(X_ref, y_enc)):
+        y_train_fold = y_enc[train_idx]
+        y_test_fold  = y_enc[test_idx]
+
+        if voting == 'soft':
+            proba_sum = np.zeros(len(test_idx))
+            for mname in members_names:
+                X_base, _ = _get_model_X(pipe, mname)
+                est = clone(trained_models[mname].model)
+                est.fit(X_base.iloc[train_idx], y_train_fold)
+                proba_sum += (weights[mname] / total_w) * est.predict_proba(X_base.iloc[test_idx])[:, 1]
+            preds = (proba_sum >= 0.5).astype(int)
+        else:
+            votes = np.zeros(len(test_idx))
+            for mname in members_names:
+                X_base, _ = _get_model_X(pipe, mname)
+                est = clone(trained_models[mname].model)
+                est.fit(X_base.iloc[train_idx], y_train_fold)
+                votes += (weights[mname] / total_w) * est.predict(X_base.iloc[test_idx])
+            preds = (votes >= 0.5).astype(int)
+
+        acc = (preds == y_test_fold).mean()
+        fold_scores.append(acc)
+        bar = '█' * int(acc * 30)
+        print(f"    Fold {fold_idx + 1}: {acc:.4f}  {bar}", flush=True)
+
+    scores = np.array(fold_scores)
+    print(f"    Media: {scores.mean():.4f}  Std: {scores.std():.4f}\n", flush=True)
+    return {'scores': scores, 'label': f"ensemble({'+'.join(members_names)})"}
 
 
 def main():
@@ -228,7 +301,11 @@ def main():
     print(f"  Kaggle usa Accuracy — stessa metrica riportata qui")
     print(SEP + "\n")
 
-    results = evaluate_all(cfg, args.folds)
+    results, trained_models, pipe, random_state = evaluate_all(cfg, args.folds)
+
+    ens_result = evaluate_ensemble(cfg, pipe, trained_models, args.folds, random_state)
+    if ens_result:
+        results['ensemble'] = ens_result
 
     print(f"\n{SEP}")
     print(f"  {'Modello':<22} {'Dataset':<22} {'Accuracy':>10}  {'± Std':>8}")

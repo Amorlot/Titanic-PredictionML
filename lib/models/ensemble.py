@@ -1,5 +1,5 @@
 import numpy as np
-from models.base import AbstractModel
+from lib.models.base import AbstractModel
 
 
 class GenericEnsemble(AbstractModel):
