@@ -19,3 +19,6 @@ data/submissions/
 data/*.zip
 data/.~lock.*
 make_presentation.py
+
+# Presentazione personale
+results/*.pptx
