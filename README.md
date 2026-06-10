@@ -10,7 +10,7 @@ Pipeline di machine learning modulare per classificazione binaria, sviluppata su
 titanic/
 ├── config.yaml              # configurazione completa della pipeline
 ├── main.py                  # entry point: training, valutazione, submission
-├── app.py                   # API REST (Flask/FastAPI)
+├── app.py                   # API REST (Flask)
 ├── Dockerfile               # immagine per eseguire l'API
 ├── start.sh                 # avvia l'API dentro il container
 ├── data/
@@ -50,7 +50,23 @@ pip install -r requirements.txt
 PYTHONPATH=lib python main.py
 ```
 
-### Con Docker (per l'API)
+### Con Docker Hub (immagine pre-built)
+
+```bash
+docker pull amorlot/titanic:latest
+docker run -it --rm amorlot/titanic bash
+
+# Avvia il training
+python3 main.py
+
+# Lancia i test
+pytest tests/ -v
+
+# Valutazione locale con accuracy e std per ogni modello
+python3 evaluate_local.py
+```
+
+### Build locale
 
 ```bash
 docker build -t titanic .
